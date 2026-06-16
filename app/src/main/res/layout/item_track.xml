@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/background"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="12dp">
+
+    <ImageView
+        android:id="@+id/iconStatus"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@android:drawable/ic_media_play"
+        app:layout_constraintBottom_toTopOf="@+id/itemDivider"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/secondary" />
+
+    <TextView
+        android:id="@+id/itemTrackTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="@font/anton"
+        android:text="TRACK_NAME_PLACEHOLDER"
+        android:textColor="@color/primary"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toStartOf="@+id/itemTrackDuration"
+        app:layout_constraintStart_toEndOf="@+id/iconStatus"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/itemTrackArtist"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontFamily="@font/jetbrains_mono"
+        android:text="ARTIST_NAME"
+        android:textColor="@color/on_surface_variant"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="@+id/itemTrackTitle"
+        app:layout_constraintStart_toStartOf="@+id/itemTrackTitle"
+        app:layout_constraintTop_toBottomOf="@+id/itemTrackTitle" />
+
+    <TextView
+        android:id="@+id/itemTrackDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/jetbrains_mono"
+        android:text="00:00"
+        android:textColor="@color/error"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toBottomOf="@+id/itemTrackTitle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/itemTrackTitle" />
+
+    <View
+        android:id="@+id/itemDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="12dp"
+        android:background="@color/outline_variant"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/itemTrackArtist" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
