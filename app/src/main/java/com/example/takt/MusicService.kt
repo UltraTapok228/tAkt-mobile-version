@@ -1,11 +1,10 @@
 package com.example.takt
 
-import android.app.PendingIntent
-import com.example.takt.MainActivity
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -46,43 +45,60 @@ class MusicService : Service() {
 
         // Инициализируем Медиа-сессию
         mediaSession = MediaSession(this, "tAkt_Session")
-
-        // функционал для фонового режима(кнопки в шторке, нажатия на наушниках)
         mediaSession.setCallback(object : MediaSession.Callback() {
-            override fun onPlay() {
-                play() // вызов функции
-            }
-
-            override fun onPause() {
-                pause() // тоже вызов функции
-            }
-
-            override fun onSeekTo(pos: Long) {
-                seekTo(pos.toInt())
-            }
+            override fun onPlay() { play() }
+            override fun onPause() { pause() }
+            override fun onSeekTo(pos: Long) { seekTo(pos.toInt()) }
         })
 
-        // ВАЖНО: Укажи тут свой файл
-        mediaPlayer = MediaPlayer.create(this, R.raw.feuer_und_wasser)
-
-        // Вытаскиваем метаданные прямо при запуске сервиса
-        extractMetadata()
+        // Создаем абсолютно пустой плеер при запуске (никаких R.raw.track)
+        mediaPlayer = MediaPlayer()
     }
 
-    private fun extractMetadata() {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Если пришла команда включить новый трек из Библиотеки
+        if (intent?.action == "PLAY_NEW_TRACK") {
+            val path = intent.getStringExtra("TRACK_PATH")
+            if (path != null) {
+                playNewTrack(path)
+            }
+        }
+        return START_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder {
+        return binder
+    }
+
+    // --- ФУНКЦИЯ ДЛЯ ЗАПУСКА ЛЮБОГО ТРЕКА ПО ПУТИ ---
+    private fun playNewTrack(path: String) {
+        try {
+            mediaPlayer?.reset() // Сбрасываем старый трек
+            mediaPlayer?.setDataSource(path) // Загружаем новый файл из памяти
+            mediaPlayer?.prepare() // Подготавливаем плеер
+
+            extractMetadata(path) // Вытаскиваем картинку и название из нового файла
+            play() // Запускаем звук и обновляем шторку
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun extractMetadata(path: String) {
         val retriever = MediaMetadataRetriever()
         try {
-            val afd = resources.openRawResourceFd(R.raw.feuer_und_wasser) // И ТУТ ТОЖЕ СВОЙ ФАЙЛ
-            retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            retriever.setDataSource(path) // Читаем физический файл с телефона
 
             trackTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "UNKNOWN_TITLE"
             trackArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "UNKNOWN_ARTIST"
 
             val artBytes = retriever.embeddedPicture
-            if (artBytes != null) {
-                trackArt = BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size)
+            trackArt = if (artBytes != null) {
+                BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size)
+            } else {
+                null // Если картинки нет, обнуляем старую
             }
-            afd.close()
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -100,13 +116,7 @@ class MusicService : Service() {
         mediaSession.setMetadata(metadataBuilder.build())
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
-
-    override fun onBind(intent: Intent?): IBinder {
-        return binder
-    }
+    // --- УПРАВЛЕНИЕ ВОСПРОИЗВЕДЕНИЕМ ---
 
     fun play() {
         mediaPlayer?.start()
@@ -118,11 +128,13 @@ class MusicService : Service() {
     fun pause() {
         mediaPlayer?.pause()
         updatePlaybackState(PlaybackState.STATE_PAUSED)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_DETACH)
         } else {
             stopForeground(false)
         }
+
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(NOTIFICATION_ID, buildNotification())
     }
@@ -142,9 +154,10 @@ class MusicService : Service() {
     fun getCurrentPosition(): Int = mediaPlayer?.currentPosition ?: 0
     fun seekTo(position: Int) { mediaPlayer?.seekTo(position) }
 
-    // Строим красивое уведомление формата MediaStyle
+    // --- СОЗДАНИЕ СИСТЕМНОГО УВЕДОМЛЕНИЯ ДЛЯ ШТОРКИ ---
+
     private fun buildNotification(): Notification {
-        // инструкция: Если нажали на медиаплеер в шторке, то открой MainActivity
+        // Создаем инструкцию: "Если на меня нажали, открой MainActivity"
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -153,7 +166,7 @@ class MusicService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // Создаем развилку для версий Android
+        // Развилка для старых/новых Android
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
         } else {
@@ -169,7 +182,7 @@ class MusicService : Service() {
             .setContentTitle(trackTitle)
             .setContentText(trackArtist)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentIntent(pendingIntent) // прикрепление инструкции
+            .setContentIntent(pendingIntent) // Прикрепляем инструкцию перехода в приложение
             .setOngoing(isPlaying())
 
         if (trackArt != null) {
@@ -179,10 +192,13 @@ class MusicService : Service() {
         return builder.build()
     }
 
-
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "tAkt Music Playback", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "tAkt Music Playback",
+                NotificationManager.IMPORTANCE_LOW
+            )
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }

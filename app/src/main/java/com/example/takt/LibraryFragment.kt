@@ -104,9 +104,18 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        // Обновляем наш список на экране
-        trackAdapter = TrackAdapter(trackList)
+        // Обновляем список на экране и ловим клики
+        trackAdapter = TrackAdapter(trackList) { clickedTrack ->
+            // Создаем приказ для нашего сервиса
+            val intent = android.content.Intent(requireContext(), MusicService::class.java).apply {
+                action = "PLAY_NEW_TRACK" // Название команды
+                putExtra("TRACK_PATH", clickedTrack.path) // Прикрепляем путь к MP3-файлу
+            }
+            // Отправляем приказ в систему
+            requireContext().startService(intent)
+        }
         recyclerView.adapter = trackAdapter
+
     }
 
     private fun formatTime(milliseconds: Int): String {
