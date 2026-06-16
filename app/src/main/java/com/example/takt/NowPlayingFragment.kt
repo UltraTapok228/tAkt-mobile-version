@@ -1,31 +1,65 @@
-package com.example.takt
+package com.example.takt // ТВОЕ ИМЯ ПАКЕТА ОСТАЕТСЯ ЗДЕСЬ!
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.SeekBar
+import android.widget.TextView
+import androidx.fragment.app.Fragment
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [NowPlayingFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class NowPlayingFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
+    private var musicService: MusicService? = null
+    private var isBound = false
+
+    private lateinit var btnPlay: ImageView
+    private lateinit var trackSeekBar: SeekBar
+    private lateinit var timeCurrent: TextView
+    private lateinit var timeTotal: TextView
+    private lateinit var trackTitle: TextView
+    private lateinit var trackArtist: TextView
+    private lateinit var albumImage: ImageView
+
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var updateSeekBarRunnable: Runnable
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as MusicService.MusicBinder
+            musicService = binder.getService()
+            isBound = true
+
+            musicService?.let { ms ->
+                trackSeekBar.max = ms.getDuration()
+                timeTotal.text = formatTime(ms.getDuration())
+
+                // ЗАБИРАЕМ ИНФУ ИЗ СЕРВИСА И ОБНОВЛЯЕМ ИНТЕРФЕЙС
+                trackTitle.text = ms.trackTitle
+                trackArtist.text = ms.trackArtist
+                if (ms.trackArt != null) {
+                    albumImage.setImageBitmap(ms.trackArt)
+                }
+
+                if (ms.isPlaying()) {
+                    btnPlay.setImageResource(android.R.drawable.ic_media_pause)
+                    handler.post(updateSeekBarRunnable)
+                } else {
+                    btnPlay.setImageResource(android.R.drawable.ic_media_play)
+                }
+            }
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            isBound = false
         }
     }
 
@@ -33,27 +67,72 @@ class NowPlayingFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_now_playing, container, false)
-    }
+        val view = inflater.inflate(R.layout.fragment_now_playing, container, false)
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment NowPlayingFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            NowPlayingFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+        btnPlay = view.findViewById(R.id.btnPlay)
+        trackSeekBar = view.findViewById(R.id.trackSeekBar)
+        timeCurrent = view.findViewById(R.id.timeCurrent)
+        timeTotal = view.findViewById(R.id.timeTotal)
+        trackTitle = view.findViewById(R.id.trackTitle)
+        trackArtist = view.findViewById(R.id.trackArtist)
+        albumImage = view.findViewById(R.id.albumImage)
+
+        btnPlay.setOnClickListener {
+            if (isBound) {
+                if (musicService?.isPlaying() == true) {
+                    musicService?.pause()
+                    btnPlay.setImageResource(android.R.drawable.ic_media_play)
+                    handler.removeCallbacks(updateSeekBarRunnable)
+                } else {
+                    musicService?.play()
+                    btnPlay.setImageResource(android.R.drawable.ic_media_pause)
+                    handler.post(updateSeekBarRunnable)
                 }
             }
+        }
+
+        trackSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser && isBound) {
+                    musicService?.seekTo(progress)
+                    timeCurrent.text = formatTime(progress)
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        updateSeekBarRunnable = Runnable {
+            if (isBound && musicService?.isPlaying() == true) {
+                val currentPos = musicService?.getCurrentPosition() ?: 0
+                trackSeekBar.progress = currentPos
+                timeCurrent.text = formatTime(currentPos)
+                handler.postDelayed(updateSeekBarRunnable, 1000)
+            }
+        }
+
+        return view
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val intent = Intent(requireContext(), MusicService::class.java)
+        requireActivity().startService(intent)
+        requireActivity().bindService(intent, connection, Context.BIND_AUTO_CREATE)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isBound) {
+            requireActivity().unbindService(connection)
+            isBound = false
+        }
+        handler.removeCallbacks(updateSeekBarRunnable)
+    }
+
+    private fun formatTime(milliseconds: Int): String {
+        val minutes = (milliseconds / 1000) / 60
+        val seconds = (milliseconds / 1000) % 60
+        return String.format("%02d:%02d", minutes, seconds)
     }
 }

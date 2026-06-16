@@ -8,5 +8,6 @@ import android.provider.MediaStore
 data class Track(
     val title: String,
     val artist: String,
-    val duration: String
+    val duration: String,
+    val path: String // путь в памяти телефона
 )

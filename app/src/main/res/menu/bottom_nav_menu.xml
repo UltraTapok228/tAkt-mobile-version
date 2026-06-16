@@ -11,4 +11,9 @@
         android:icon="@android:drawable/ic_menu_sort_by_size"
         android:title="LIBRARY" />
 
+    <item
+        android:id="@+id/nav_crzc"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="CRZC" />
+
 </menu>
