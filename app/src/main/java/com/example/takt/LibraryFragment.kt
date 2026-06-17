@@ -104,16 +104,21 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        // Обновляем список на экране и ловим клики
+        // Обновляем наш список на экране и ловим клики
         trackAdapter = TrackAdapter(trackList) { clickedTrack ->
-            // Создаем приказ для нашего сервиса
+            // 1. Собираем массив путей всех треков из списка
+            val paths = ArrayList(trackList.map { it.path })
+            // 2. Находим индекс того трека, на который нажали
+            val clickedIndex = trackList.indexOf(clickedTrack)
+
             val intent = android.content.Intent(requireContext(), MusicService::class.java).apply {
-                action = "PLAY_NEW_TRACK" // Название команды
-                putExtra("TRACK_PATH", clickedTrack.path) // Прикрепляем путь к MP3-файлу
+                action = "PLAY_NEW_TRACK"
+                putStringArrayListExtra("TRACK_LIST", paths) // Передаем весь плейлист
+                putExtra("TRACK_INDEX", clickedIndex) // Передаем индекс текущего
             }
-            // Отправляем приказ в систему
             requireContext().startService(intent)
         }
+
         recyclerView.adapter = trackAdapter
 
     }

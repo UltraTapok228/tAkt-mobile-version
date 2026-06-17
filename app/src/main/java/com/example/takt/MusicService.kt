@@ -21,6 +21,9 @@ import android.os.IBinder
 
 class MusicService : Service() {
 
+    private var trackPaths = ArrayList<String>()
+    private var currentIndex = 0
+
     private var mediaPlayer: MediaPlayer? = null
     private val binder = MusicBinder()
 
@@ -43,28 +46,35 @@ class MusicService : Service() {
         super.onCreate()
         createNotificationChannel()
 
-        // Инициализируем Медиа-сессию
+        // Инициализируем Медиа-сессию(простыми словами шторка и прочее)
         mediaSession = MediaSession(this, "tAkt_Session")
         mediaSession.setCallback(object : MediaSession.Callback() {
             override fun onPlay() { play() }
             override fun onPause() { pause() }
             override fun onSeekTo(pos: Long) { seekTo(pos.toInt()) }
+            override fun onSkipToNext() { skipToNext() } // кнопка дальше
+            override fun onSkipToPrevious() { skipToPrevious() } // кнопка назад
         })
+
 
         // Создаем абсолютно пустой плеер при запуске (никаких R.raw.track)
         mediaPlayer = MediaPlayer()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Если пришла команда включить новый трек из Библиотеки
         if (intent?.action == "PLAY_NEW_TRACK") {
-            val path = intent.getStringExtra("TRACK_PATH")
-            if (path != null) {
-                playNewTrack(path)
+            val list = intent.getStringArrayListExtra("TRACK_LIST")
+            val index = intent.getIntExtra("TRACK_INDEX", 0)
+
+            if (list != null && list.isNotEmpty()) {
+                trackPaths = list
+                currentIndex = index
+                playNewTrack(trackPaths[currentIndex])
             }
         }
         return START_STICKY
     }
+
 
     override fun onBind(intent: Intent?): IBinder {
         return binder
@@ -73,17 +83,36 @@ class MusicService : Service() {
     // --- ФУНКЦИЯ ДЛЯ ЗАПУСКА ЛЮБОГО ТРЕКА ПО ПУТИ ---
     private fun playNewTrack(path: String) {
         try {
-            mediaPlayer?.reset() // Сбрасываем старый трек
-            mediaPlayer?.setDataSource(path) // Загружаем новый файл из памяти
-            mediaPlayer?.prepare() // Подготавливаем плеер
+            mediaPlayer?.reset()
+            mediaPlayer?.setDataSource(path)
+            mediaPlayer?.prepare()
 
-            extractMetadata(path) // Вытаскиваем картинку и название из нового файла
-            play() // Запускаем звук и обновляем шторку
+            // автоматическое переключение треков
+            mediaPlayer?.setOnCompletionListener {
+                skipToNext() // Как только трек закончился - включаем следующий
+            }
 
+            extractMetadata(path)
+            play()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
+
+    fun skipToNext() {
+        if (trackPaths.isEmpty()) return
+        // Увеличиваем индекс, если дошли до конца - переходим в начало (зацикливание плейлиста)
+        currentIndex = (currentIndex + 1) % trackPaths.size
+        playNewTrack(trackPaths[currentIndex])
+    }
+
+    fun skipToPrevious() {
+        if (trackPaths.isEmpty()) return
+        // Уменьшаем индекс, если ушли в минус - переходим в конец
+        currentIndex = if (currentIndex - 1 < 0) trackPaths.size - 1 else currentIndex - 1
+        playNewTrack(trackPaths[currentIndex])
+    }
+
 
     private fun extractMetadata(path: String) {
         val retriever = MediaMetadataRetriever()
