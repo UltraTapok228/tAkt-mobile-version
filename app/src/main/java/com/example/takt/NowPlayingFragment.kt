@@ -1,4 +1,4 @@
-package com.example.takt
+package com.example.takt // ТВОЕ ИМЯ ПАКЕТА ОСТАЕТСЯ ЗДЕСЬ!
 
 import android.content.ComponentName
 import android.content.Context
@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 
 class NowPlayingFragment : Fragment() {
@@ -25,6 +26,9 @@ class NowPlayingFragment : Fragment() {
     private lateinit var btnPlay: ImageView
     private lateinit var btnNext: ImageView
     private lateinit var btnPrevious: ImageView
+    private lateinit var btnShuffle: TextView // Кнопка RND
+    private lateinit var btnRepeat: TextView  // Кнопка RPT
+
     private lateinit var trackSeekBar: SeekBar
     private lateinit var timeCurrent: TextView
     private lateinit var timeTotal: TextView
@@ -35,14 +39,12 @@ class NowPlayingFragment : Fragment() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var updateSeekBarRunnable: Runnable
 
-    // Подключение к нашему сервису
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             val binder = service as MusicService.MusicBinder
             musicService = binder.getService()
             isBound = true
 
-            // Обновляем весь интерфейс при подключении
             updateUI()
 
             if (musicService?.isPlaying() == true) {
@@ -61,10 +63,11 @@ class NowPlayingFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_now_playing, container, false)
 
-        // Привязываем переменные к XML-элементам
         btnPlay = view.findViewById(R.id.btnPlay)
         btnNext = view.findViewById(R.id.btnNext)
         btnPrevious = view.findViewById(R.id.btnPrevious)
+        btnShuffle = view.findViewById(R.id.btnShuffle)
+        btnRepeat = view.findViewById(R.id.btnRepeat)
         trackSeekBar = view.findViewById(R.id.trackSeekBar)
         timeCurrent = view.findViewById(R.id.timeCurrent)
         timeTotal = view.findViewById(R.id.timeTotal)
@@ -72,7 +75,7 @@ class NowPlayingFragment : Fragment() {
         trackArtist = view.findViewById(R.id.trackArtist)
         albumImage = view.findViewById(R.id.albumImage)
 
-        // --- ОБРАБОТКА КЛИКОВ ПО КНОПКАМ ---
+        // --- ОБРАБОТКА ОСНОВНЫХ КНОПОК ---
 
         btnPlay.setOnClickListener {
             if (isBound) {
@@ -102,7 +105,23 @@ class NowPlayingFragment : Fragment() {
             }
         }
 
-        // --- ОБРАБОТКА ПОЛЗУНКА ПЕРЕМОТКИ ---
+        // --- ОБРАБОТКА RND И RPT ---
+
+        btnShuffle.setOnClickListener {
+            if (isBound) {
+                musicService?.toggleShuffle()
+                updateUI() // Перерисовываем цвета
+            }
+        }
+
+        btnRepeat.setOnClickListener {
+            if (isBound) {
+                musicService?.toggleRepeat()
+                updateUI() // Перерисовываем цвета
+            }
+        }
+
+        // --- ОБРАБОТКА ПОЛЗУНКА ---
 
         trackSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -115,7 +134,7 @@ class NowPlayingFragment : Fragment() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        // --- ТАЙМЕР ОБНОВЛЕНИЯ ИНТЕРФЕЙСА ---
+        // --- ТАЙМЕР ---
 
         updateSeekBarRunnable = Runnable {
             if (isBound && musicService?.isPlaying() == true) {
@@ -123,8 +142,6 @@ class NowPlayingFragment : Fragment() {
                 trackSeekBar.progress = currentPos
                 timeCurrent.text = formatTime(currentPos)
 
-                // Если песня переключилась автоматически, название в сервисе поменяется.
-                // Заметили это -> обновляем картинки и тексты!
                 if (trackTitle.text != musicService?.trackTitle) {
                     updateUI()
                 }
@@ -148,7 +165,7 @@ class NowPlayingFragment : Fragment() {
             if (ms.trackArt != null) {
                 albumImage.setImageBitmap(ms.trackArt)
             } else {
-                albumImage.setImageResource(android.R.color.darker_gray) // Заглушка, если нет обложки
+                albumImage.setImageResource(android.R.color.darker_gray)
             }
 
             if (ms.isPlaying()) {
@@ -156,10 +173,22 @@ class NowPlayingFragment : Fragment() {
             } else {
                 btnPlay.setImageResource(android.R.drawable.ic_media_play)
             }
+
+            // ПОДКРАШИВАЕМ КНОПКУ RND
+            if (ms.isShuffleEnabled) {
+                btnShuffle.setTextColor(ContextCompat.getColor(requireContext(), R.color.secondary))
+            } else {
+                btnShuffle.setTextColor(ContextCompat.getColor(requireContext(), R.color.on_surface_variant))
+            }
+
+            // ПОДКРАШИВАЕМ КНОПКУ RPT
+            if (ms.isRepeatOneEnabled) {
+                btnRepeat.setTextColor(ContextCompat.getColor(requireContext(), R.color.secondary))
+            } else {
+                btnRepeat.setTextColor(ContextCompat.getColor(requireContext(), R.color.on_surface_variant))
+            }
         }
     }
-
-    // --- ПОДКЛЮЧЕНИЕ / ОТКЛЮЧЕНИЕ СЕРВИСА ---
 
     override fun onStart() {
         super.onStart()
@@ -177,7 +206,6 @@ class NowPlayingFragment : Fragment() {
         handler.removeCallbacks(updateSeekBarRunnable)
     }
 
-    // Вспомогательная функция для перевода миллисекунд в минуты:секунды
     private fun formatTime(milliseconds: Int): String {
         val minutes = (milliseconds / 1000) / 60
         val seconds = (milliseconds / 1000) % 60

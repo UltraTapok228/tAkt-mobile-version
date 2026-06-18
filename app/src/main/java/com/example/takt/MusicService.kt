@@ -24,6 +24,18 @@ class MusicService : Service() {
     private var trackPaths = ArrayList<String>()
     private var currentIndex = 0
 
+    // для кнопкок рандом и репит
+    var isShuffleEnabled = false
+    var isRepeatOneEnabled = false
+
+    fun toggleShuffle() {
+        isShuffleEnabled = !isShuffleEnabled
+    }
+
+    fun toggleRepeat() {
+        isRepeatOneEnabled = !isRepeatOneEnabled
+    }
+
     private var mediaPlayer: MediaPlayer? = null
     private val binder = MusicBinder()
 
@@ -87,9 +99,16 @@ class MusicService : Service() {
             mediaPlayer?.setDataSource(path)
             mediaPlayer?.prepare()
 
-            // автоматическое переключение треков
+            // --- МАГИЯ АВТОПЕРЕКЛЮЧЕНИЯ И РЕПИТА ---
             mediaPlayer?.setOnCompletionListener {
-                skipToNext() // Как только трек закончился - включаем следующий
+                if (isRepeatOneEnabled) {
+                    // Если включен репит одного трека - перематываем в начало и играем снова
+                    mediaPlayer?.seekTo(0)
+                    play()
+                } else {
+                    // Иначе просто переключаем на следующий
+                    skipToNext()
+                }
             }
 
             extractMetadata(path)
@@ -101,8 +120,18 @@ class MusicService : Service() {
 
     fun skipToNext() {
         if (trackPaths.isEmpty()) return
-        // Увеличиваем индекс, если дошли до конца - переходим в начало (зацикливание плейлиста)
-        currentIndex = (currentIndex + 1) % trackPaths.size
+
+        if (isShuffleEnabled && trackPaths.size > 1) {
+            // Если включен RND, ищем случайный трек, который не совпадает с текущим
+            var nextIndex = currentIndex
+            while (nextIndex == currentIndex) {
+                nextIndex = (0 until trackPaths.size).random()
+            }
+            currentIndex = nextIndex
+        } else {
+            // Обычное переключение по порядку
+            currentIndex = (currentIndex + 1) % trackPaths.size
+        }
         playNewTrack(trackPaths[currentIndex])
     }
 
