@@ -74,7 +74,8 @@ class LibraryFragment : Fragment() {
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.DATA // Это физический путь к файлу (.mp3/.wav)
+            MediaStore.Audio.Media.DATA, // Это физический путь к файлу (.mp3/.wav)
+            MediaStore.Audio.Media.ALBUM
         )
 
         // Жесткое условие: файл должен быть МУЗЫКОЙ (отсеиваем рингтоны и голосовухи)
@@ -87,12 +88,16 @@ class LibraryFragment : Fragment() {
             val artistColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val durationColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val dataColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val albumCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
 
             while (it.moveToNext()) {
                 val title = it.getString(titleColumn) ?: "UNKNOWN_TITLE"
                 val artist = it.getString(artistColumn) ?: "UNKNOWN_ARTIST"
+                val albumName = it.getString(albumCol) ?: "UNKNOWN_ALBUM"
                 val durationMs = it.getLong(durationColumn)
                 val path = it.getString(dataColumn)
+
+                trackList.add(Track(title, artist, formatTime(durationMs.toInt()), path, albumName))
 
                 // Если трек слишком короткий или с битой длительностью - пропускаем
                 if (durationMs < 1000) continue
@@ -100,7 +105,7 @@ class LibraryFragment : Fragment() {
                 // Переводим миллисекунды в формат 00:00
                 val durationStr = formatTime(durationMs.toInt())
 
-                trackList.add(Track(title, artist, durationStr, path))
+                trackList.add(Track(title, artist, durationStr, path, "UNKNOWN_ALBUM"))
             }
         }
 

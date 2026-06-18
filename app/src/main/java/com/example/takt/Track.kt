@@ -9,5 +9,6 @@ data class Track(
     val title: String,
     val artist: String,
     val duration: String,
-    val path: String // путь в памяти телефона
+    val path: String, // путь в памяти телефона
+    val album: String // для сортировки треков Crazy Cucumber по альбомам
 )

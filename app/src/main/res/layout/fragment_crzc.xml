@@ -6,13 +6,26 @@
     android:background="@color/background">
 
     <TextView
+        android:id="@+id/crzcHeader"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="CRZC RELEASES (В разработке)"
-        android:textColor="@color/error"
-        android:textSize="24sp"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp"
         android:fontFamily="@font/anton"
-        app:layout_constraintTop_toTopOf="parent"
+        android:text="CRZC_RELEASES"
+        android:textColor="@color/error"
+        android:textSize="28sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewAlbums"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:paddingHorizontal="8dp"
+        android:clipToPadding="false"
+        app:layout_constraintTop_toBottomOf="@+id/crzcHeader"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
