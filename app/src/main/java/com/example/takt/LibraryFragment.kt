@@ -97,15 +97,11 @@ class LibraryFragment : Fragment() {
                 val durationMs = it.getLong(durationColumn)
                 val path = it.getString(dataColumn)
 
-                trackList.add(Track(title, artist, formatTime(durationMs.toInt()), path, albumName))
-
-                // Если трек слишком короткий или с битой длительностью - пропускаем
+                // Сначала отсеиваем слишком короткие треки
                 if (durationMs < 1000) continue
 
-                // Переводим миллисекунды в формат 00:00
-                val durationStr = formatTime(durationMs.toInt())
-
-                trackList.add(Track(title, artist, durationStr, path, "UNKNOWN_ALBUM"))
+                // Добавляем трек в список ровно один раз!
+                trackList.add(Track(title, artist, formatTime(durationMs.toInt()), path, albumName))
             }
         }
 
