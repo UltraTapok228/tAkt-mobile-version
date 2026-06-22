@@ -1,8 +1,9 @@
-package com.example.takt // Оставь свой пакет
+package com.example.takt
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager // импорт для очистки истории
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
@@ -10,7 +11,6 @@ class MainActivity : AppCompatActivity() {
     // 1. Создаем экземпляры всех экранов ОДИН РАЗ, чтобы они не уничтожались
     private val fragmentListen = NowPlayingFragment()
     private val fragmentLibrary = LibraryFragment()
-
     private val fragmentCrzc = CrzcFragment()
 
     // Переменная, которая хранит текущий открытый экран
@@ -36,6 +36,10 @@ class MainActivity : AppCompatActivity() {
 
         // 3. Умное переключение через .hide() и .show()
         bottomNav.setOnItemSelectedListener { item ->
+
+            // Принудительно очищаем BackStack (закрываем открытый альбом, если он есть)
+            supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+
             when (item.itemId) {
                 R.id.nav_listen -> {
                     supportFragmentManager.beginTransaction().hide(activeFragment).show(fragmentListen).commit()
