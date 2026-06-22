@@ -66,13 +66,17 @@ class CrzcFragment : Fragment() {
 
         // ОТПРАВЛЯЕМ В АДАПТЕР
         val albumAdapter = AlbumAdapter(albumsList) { clickedAlbum ->
-            val paths = ArrayList(clickedAlbum.tracks.map { it.path })
-            val intent = Intent(requireContext(), MusicService::class.java).apply {
-                action = "PLAY_NEW_TRACK"
-                putStringArrayListExtra("TRACK_LIST", paths)
-                putExtra("TRACK_INDEX", 0)
-            }
-            requireContext().startService(intent)
+            val detailsFragment = AlbumDetailsFragment.newInstance(
+                title = clickedAlbum.title,
+                coverPath = clickedAlbum.coverPath,
+                tracks = ArrayList(clickedAlbum.tracks)
+            )
+
+            // Открываем экран альбома поверх текущего
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, detailsFragment)
+                .addToBackStack(null)
+                .commit()
         }
 
         recyclerView.adapter = albumAdapter

@@ -1,5 +1,6 @@
 package com.example.takt
 
+import android.net.Uri
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -96,7 +97,7 @@ class MusicService : Service() {
     private fun playNewTrack(path: String) {
         try {
             mediaPlayer?.reset()
-            mediaPlayer?.setDataSource(path)
+            mediaPlayer?.setDataSource(this, Uri.parse(path))
             mediaPlayer?.prepare()
 
             // --- МАГИЯ АВТОПЕРЕКЛЮЧЕНИЯ И РЕПИТА ---
@@ -146,7 +147,7 @@ class MusicService : Service() {
     private fun extractMetadata(path: String) {
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(path) // Читаем физический файл с телефона
+            retriever.setDataSource(this, Uri.parse(path)) // Читаем физический файл с телефона
 
             trackTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "UNKNOWN_TITLE"
             trackArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "UNKNOWN_ARTIST"
